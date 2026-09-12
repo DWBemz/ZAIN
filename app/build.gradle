@@ -34,3 +34,10 @@ dependencies {
 
     ksp "androidx.room:room-compiler:$roomVersion"
 }
+compileOptions {
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
+}
+kotlinOptions {
+    jvmTarget = '17'
+}
