@@ -20,4 +20,14 @@ interface MemoryDao {
         ORDER BY updatedAt DESC
     """)
     suspend fun search(query: String): List<Memory>
+
+    @Query("""
+        SELECT * FROM memories
+        WHERE category = :category
+        ORDER BY updatedAt DESC
+    """)
+    suspend fun getByCategory(category: String): List<Memory>
+
+    @Query("SELECT COUNT(*) FROM memories")
+    suspend fun count(): Int
 }
