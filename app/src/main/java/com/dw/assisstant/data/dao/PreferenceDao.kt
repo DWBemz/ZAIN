@@ -12,10 +12,6 @@ interface PreferenceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun save(preference: Preference)
 
-    @Query("""
-        SELECT * FROM preferences
-        WHERE `key` = :key
-        LIMIT 1
-    """)
+    @Query("SELECT * FROM preferences WHERE `key` = :key LIMIT 1")
     suspend fun get(key: String): Preference?
 }
