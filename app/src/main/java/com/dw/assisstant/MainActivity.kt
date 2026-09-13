@@ -58,32 +58,74 @@ class MainActivity : AppCompatActivity() {
             clearChat()
         }
 
-        createConversation()
+        loadConversation()
     }
 
-    private fun createConversation() {
+    private fun loadConversation() {
+
         lifecycleScope.launch(Dispatchers.IO) {
 
-            conversationId = database.conversationDao().insert(
-                Conversation(
-                    title = "ZAIN Conversation"
-                )
-            )
+            val conversations = database
+                .conversationDao()
+                .getAll()
 
-            withContext(Dispatchers.Main) {
-                addZainMessage(
-                    "Hey, I'm ZAIN 👋\n\n" +
-                            "I'm your personal AI assistant.\n\n" +
-                            "My local brain is ready.\n\n" +
-                            "You can tell me things to remember."
-                )
+            if (conversations.isEmpty()) {
+
+                conversationId = database
+                    .conversationDao()
+                    .insert(
+                        Conversation(
+                            title = "ZAIN Conversation"
+                        )
+                    )
+
+                withContext(Dispatchers.Main) {
+                    addZainMessage(
+                        "Hey, I'm ZAIN 👋\n\n" +
+                                "I'm your personal AI assistant.\n\n" +
+                                "My local brain is ready."
+                    )
+                }
+
+            } else {
+
+                val latestConversation = conversations.first()
+
+                conversationId = latestConversation.id
+
+                val messages = database
+                    .messageDao()
+                    .getForConversation(conversationId)
+
+                withContext(Dispatchers.Main) {
+
+                    if (messages.isEmpty()) {
+
+                        addZainMessage(
+                            "Welcome back. I'm ready."
+                        )
+
+                    } else {
+
+                        messages.forEach { message ->
+
+                            if (message.role == "user") {
+                                addUserMessage(message.content)
+                            } else {
+                                addZainMessage(message.content)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 
     private fun sendMessage() {
 
-        val text = messageInput.text.toString().trim()
+        val text = messageInput.text
+            .toString()
+            .trim()
 
         if (text.isEmpty()) return
 
@@ -95,48 +137,52 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.IO) {
 
-            if (conversationId != 0L) {
-                database.messageDao().insert(
-                    Message(
-                        conversationId = conversationId,
-                        role = "user",
-                        content = text
-                    )
+            database.messageDao().insert(
+                Message(
+                    conversationId = conversationId,
+                    role = "user",
+                    content = text
                 )
-            }
+            )
+
+            database.conversationDao().updateTimestamp(
+                conversationId = conversationId,
+                updatedAt = System.currentTimeMillis()
+            )
 
             val response = processMessage(text)
 
-            if (conversationId != 0L) {
-                database.messageDao().insert(
-                    Message(
-                        conversationId = conversationId,
-                        role = "assistant",
-                        content = response
-                    )
+            database.messageDao().insert(
+                Message(
+                    conversationId = conversationId,
+                    role = "assistant",
+                    content = response
                 )
-            }
+            )
+
+            database.conversationDao().updateTimestamp(
+                conversationId = conversationId,
+                updatedAt = System.currentTimeMillis()
+            )
 
             withContext(Dispatchers.Main) {
+
                 addZainMessage(response)
+
                 sendButton.isEnabled = true
+
                 messageInput.requestFocus()
             }
         }
     }
 
-    private suspend fun processMessage(text: String): String {
+    private suspend fun processMessage(
+        text: String
+    ): String {
 
-        val lower = text.lowercase().trim()
-
-        /*
-         * MEMORY COMMAND
-         *
-         * Examples:
-         * Remember that my favorite color is red
-         * Remember my favorite food is rice
-         * Please remember that I like programming
-         */
+        val lower = text
+            .lowercase()
+            .trim()
 
         if (
             lower.startsWith("remember that ") ||
@@ -171,19 +217,18 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        /*
-         * ASK ABOUT MEMORY
-         */
-
         if (
             lower.contains("what do you remember") ||
             lower.contains("what do you know about me") ||
             lower.contains("tell me what you remember")
         ) {
 
-            val memories = database.memoryDao().getAll()
+            val memories = database
+                .memoryDao()
+                .getAll()
 
             if (memories.isEmpty()) {
+
                 return "I don't have any memories about you yet."
             }
 
@@ -191,22 +236,16 @@ class MainActivity : AppCompatActivity() {
 
                 append("Here's what I remember:\n\n")
 
-                memories.take(15).forEachIndexed { index, memory ->
+                memories
+                    .take(15)
+                    .forEachIndexed { index, memory ->
 
-                    append("${index + 1}. ")
-                    append(memory.content)
-                    append("\n")
-                }
+                        append("${index + 1}. ")
+                        append(memory.content)
+                        append("\n")
+                    }
             }
         }
-
-        /*
-         * SEARCH MEMORY
-         *
-         * Examples:
-         * What do you remember about my favorite color?
-         * What do you know about programming?
-         */
 
         if (
             lower.contains("remember about") ||
@@ -217,7 +256,9 @@ class MainActivity : AppCompatActivity() {
 
             if (searchWords.isNotEmpty()) {
 
-                val results = database.memoryDao().search(searchWords)
+                val results = database
+                    .memoryDao()
+                    .search(searchWords)
 
                 if (results.isNotEmpty()) {
 
@@ -225,21 +266,20 @@ class MainActivity : AppCompatActivity() {
 
                         append("I found this in my memory:\n\n")
 
-                        results.take(5).forEach {
-                            append("• ")
-                            append(it.content)
-                            append("\n")
-                        }
+                        results
+                            .take(5)
+                            .forEach {
+
+                                append("• ")
+                                append(it.content)
+                                append("\n")
+                            }
                     }
                 }
             }
 
             return "I couldn't find anything about that in my memory."
         }
-
-        /*
-         * NORMAL BASIC RESPONSES
-         */
 
         return when {
 
@@ -257,7 +297,7 @@ class MainActivity : AppCompatActivity() {
 
             lower.contains("what can you do") -> {
 
-                "Right now I can chat with you, remember information you give me, retrieve saved memories, and store our conversation locally."
+                "Right now I can chat with you, remember information you give me, retrieve saved memories, and store our conversations locally."
             }
 
             lower.contains("are you online") -> {
@@ -287,31 +327,43 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun extractSearchWords(text: String): String {
+    private fun extractSearchWords(
+        text: String
+    ): String {
 
         val cleaned = text
             .lowercase()
-            .replace("what do you remember about", "")
-            .replace("what do you know about", "")
-            .replace("tell me what you remember about", "")
+            .replace(
+                "what do you remember about",
+                ""
+            )
+            .replace(
+                "what do you know about",
+                ""
+            )
+            .replace(
+                "tell me what you remember about",
+                ""
+            )
             .replace("?", "")
             .trim()
 
         val words = cleaned
             .split(" ")
             .filter {
+
                 it.length > 2 &&
                         it !in setOf(
-                            "the",
-                            "about",
-                            "my",
-                            "you",
-                            "your",
-                            "that",
-                            "this",
-                            "know",
-                            "remember"
-                        )
+                    "the",
+                    "about",
+                    "my",
+                    "you",
+                    "your",
+                    "that",
+                    "this",
+                    "know",
+                    "remember"
+                )
             }
 
         return words.joinToString(" ")
@@ -319,15 +371,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun clearChat() {
 
-        messageContainer.removeAllViews()
+        lifecycleScope.launch(Dispatchers.IO) {
 
-        addZainMessage(
-            "Chat cleared.\n\n" +
-                    "My saved memories are still safe."
-        )
+            database.messageDao()
+                .deleteForConversation(conversationId)
+
+            withContext(Dispatchers.Main) {
+
+                messageContainer.removeAllViews()
+
+                addZainMessage(
+                    "Chat cleared.\n\n" +
+                            "My saved memories are still safe."
+                )
+            }
+        }
     }
 
-    private fun addUserMessage(text: String) {
+    private fun addUserMessage(
+        text: String
+    ) {
 
         addMessageBubble(
             text = text,
@@ -335,7 +398,9 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun addZainMessage(text: String) {
+    private fun addZainMessage(
+        text: String
+    ) {
 
         addMessageBubble(
             text = text,
