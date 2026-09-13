@@ -4,8 +4,18 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
-import com.dw.assisstant.data.dao.*
-import com.dw.assisstant.data.entities.*
+import com.dw.assisstant.data.dao.ConversationDao
+import com.dw.assisstant.data.dao.KnowledgeDao
+import com.dw.assisstant.data.dao.MemoryDao
+import com.dw.assisstant.data.dao.MessageDao
+import com.dw.assisstant.data.dao.PreferenceDao
+import com.dw.assisstant.data.dao.SkillDao
+import com.dw.assisstant.data.entities.Conversation
+import com.dw.assisstant.data.entities.Knowledge
+import com.dw.assisstant.data.entities.Memory
+import com.dw.assisstant.data.entities.Message
+import com.dw.assisstant.data.entities.Preference
+import com.dw.assisstant.data.entities.Skill
 
 @Database(
     entities = [
@@ -38,9 +48,7 @@ abstract class ZainDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: ZainDatabase? = null
 
-        fun getInstance(
-            context: Context
-        ): ZainDatabase {
+        fun getInstance(context: Context): ZainDatabase {
 
             return INSTANCE ?: synchronized(this) {
 
