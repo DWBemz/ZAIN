@@ -3,31 +3,41 @@ package com.dw.assisstant.data.dao
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
-import com.dw.assisstant.data.entities.Memory
+import com.dw.assisstant.data.entities.Message
 
 @Dao
-interface MemoryDao {
+interface MessageDao {
 
     @Insert
-    suspend fun insert(memory: Memory): Long
-
-    @Query("SELECT * FROM memories ORDER BY updatedAt DESC")
-    suspend fun getAll(): List<Memory>
+    suspend fun insert(message: Message): Long
 
     @Query("""
-        SELECT * FROM memories
-        WHERE content LIKE '%' || :query || '%'
-        ORDER BY updatedAt DESC
+        SELECT * FROM messages
+        WHERE conversationId = :conversationId
+        ORDER BY createdAt ASC
     """)
-    suspend fun search(query: String): List<Memory>
+    suspend fun getForConversation(
+        conversationId: Long
+    ): List<Message>
 
     @Query("""
-        SELECT * FROM memories
-        WHERE category = :category
-        ORDER BY updatedAt DESC
+        SELECT * FROM messages
+        WHERE conversationId = :conversationId
+        ORDER BY createdAt DESC
+        LIMIT :limit
     """)
-    suspend fun getByCategory(category: String): List<Memory>
+    suspend fun getRecentMessages(
+        conversationId: Long,
+        limit: Int
+    ): List<Message>
 
-    @Query("SELECT COUNT(*) FROM memories")
-    suspend fun count(): Int
+    @Query("DELETE FROM messages WHERE conversationId = :conversationId")
+    suspend fun deleteForConversation(
+        conversationId: Long
+    )
+
+    @Query("SELECT COUNT(*) FROM messages WHERE conversationId = :conversationId")
+    suspend fun countForConversation(
+        conversationId: Long
+    ): Int
 }
