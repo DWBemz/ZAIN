@@ -2,14 +2,18 @@
 
 <resources>
 
-    <color name="zain_black">#080808</color>
-    <color name="zain_dark">#101010</color>
-    <color name="zain_dark_line">#242424</color>
+    <color name="zain_black">#050505</color>
+    <color name="zain_black_soft">#0A0A0A</color>
 
-    <color name="zain_red">#E50914</color>
-    <color name="zain_red_dark">#A8070F</color>
+    <color name="zain_red">#FF1744</color>
+    <color name="zain_red_dark">#B00020</color>
+    <color name="zain_red_soft">#401018</color>
 
     <color name="zain_white">#FFFFFF</color>
-    <color name="zain_muted">#9A9A9A</color>
+    <color name="zain_gray">#A6A6A6</color>
+    <color name="zain_muted">#666666</color>
+
+    <color name="zain_surface">#111111</color>
+    <color name="zain_surface_2">#171717</color>
 
 </resources>
