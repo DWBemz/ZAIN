@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+
+    <gradient
+        android:type="radial"
+        android:gradientRadius="70dp"
+        android:centerColor="@color/zain_red"
+        android:startColor="@color/zain_red_dark"
+        android:endColor="@color/zain_black" />
+
+    <stroke
+        android:width="2dp"
+        android:color="@color/zain_red" />
+
+</shape>
