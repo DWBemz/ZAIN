@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/menu_memory"
+        android:title="🧠  Memory" />
+
+    <item
+        android:id="@+id/menu_conversations"
+        android:title="💬  Conversations" />
+
+    <item
+        android:id="@+id/menu_voice"
+        android:title="🎙  Voice" />
+
+    <item
+        android:id="@+id/menu_skills"
+        android:title="🧩  Skills &amp; Capabilities" />
+
+    <item
+        android:id="@+id/menu_settings"
+        android:title="⚙  Settings" />
+
+    <item
+        android:id="@+id/menu_about"
+        android:title="ℹ  About ZAIN" />
+
+    <item
+        android:id="@+id/menu_clear_chat"
+        android:title="🗑  Clear Chat" />
+
+</menu>
