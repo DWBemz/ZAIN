@@ -1,13 +1,17 @@
 package com.dw.assisstant
 
 import android.os.Bundle
+import android.view.MenuItem
 import android.view.inputmethod.EditorInfo
 import android.widget.Button
 import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.dw.assisstant.data.ZainDatabase
@@ -25,6 +29,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var messageInput: EditText
     private lateinit var scrollView: ScrollView
     private lateinit var sendButton: Button
+    private lateinit var menuButton: Button
 
     private var conversationId: Long = 0L
 
@@ -38,8 +43,7 @@ class MainActivity : AppCompatActivity() {
         messageInput = findViewById(R.id.messageInput)
         scrollView = findViewById(R.id.messageScroll)
         sendButton = findViewById(R.id.sendButton)
-
-        val clearButton: Button = findViewById(R.id.clearButton)
+        menuButton = findViewById(R.id.menuButton)
 
         sendButton.setOnClickListener {
             sendMessage()
@@ -54,11 +58,192 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        clearButton.setOnClickListener {
-            clearChat()
+        menuButton.setOnClickListener {
+            showMainMenu()
         }
 
         loadConversation()
+    }
+
+    private fun showMainMenu() {
+
+        val popup = PopupMenu(this, menuButton)
+
+        popup.menuInflater.inflate(
+            R.menu.main_menu,
+            popup.menu
+        )
+
+        popup.setOnMenuItemClickListener { item: MenuItem ->
+
+            when (item.itemId) {
+
+                R.id.menu_memory -> {
+                    showMemory()
+                    true
+                }
+
+                R.id.menu_conversations -> {
+                    showConversations()
+                    true
+                }
+
+                R.id.menu_voice -> {
+                    showComingSoon("Voice")
+                    true
+                }
+
+                R.id.menu_skills -> {
+                    showComingSoon("Skills & Capabilities")
+                    true
+                }
+
+                R.id.menu_settings -> {
+                    showComingSoon("Settings")
+                    true
+                }
+
+                R.id.menu_about -> {
+                    showAbout()
+                    true
+                }
+
+                R.id.menu_clear_chat -> {
+                    confirmClearChat()
+                    true
+                }
+
+                else -> false
+            }
+        }
+
+        popup.show()
+    }
+
+    private fun showMemory() {
+
+        lifecycleScope.launch(Dispatchers.IO) {
+
+            val memories = database
+                .memoryDao()
+                .getAll()
+
+            withContext(Dispatchers.Main) {
+
+                if (memories.isEmpty()) {
+
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("🧠 ZAIN Memory")
+                        .setMessage(
+                            "ZAIN doesn't have any saved memories about you yet."
+                        )
+                        .setPositiveButton("OK", null)
+                        .show()
+
+                    return@withContext
+                }
+
+                val memoryText = buildString {
+
+                    memories
+                        .take(20)
+                        .forEachIndexed { index, memory ->
+
+                            append("${index + 1}. ")
+                            append(memory.content)
+                            append("\n\n")
+                        }
+                }
+
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("🧠 ZAIN Memory")
+                    .setMessage(memoryText)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun showConversations() {
+
+        lifecycleScope.launch(Dispatchers.IO) {
+
+            val conversations = database
+                .conversationDao()
+                .getAll()
+
+            withContext(Dispatchers.Main) {
+
+                if (conversations.isEmpty()) {
+
+                    AlertDialog.Builder(this@MainActivity)
+                        .setTitle("💬 Conversations")
+                        .setMessage("No conversations yet.")
+                        .setPositiveButton("OK", null)
+                        .show()
+
+                    return@withContext
+                }
+
+                val conversationText = buildString {
+
+                    conversations
+                        .take(20)
+                        .forEachIndexed { index, conversation ->
+
+                            append("${index + 1}. ")
+                            append(conversation.title)
+                            append("\n\n")
+                        }
+                }
+
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("💬 Conversations")
+                    .setMessage(conversationText)
+                    .setPositiveButton("OK", null)
+                    .show()
+            }
+        }
+    }
+
+    private fun showComingSoon(feature: String) {
+
+        Toast.makeText(
+            this,
+            "$feature is coming in the next ZAIN update.",
+            Toast.LENGTH_SHORT
+        ).show()
+    }
+
+    private fun showAbout() {
+
+        AlertDialog.Builder(this)
+            .setTitle("ℹ About ZAIN")
+            .setMessage(
+                "ZAIN\n\n" +
+                        "Personal AI Assistant\n\n" +
+                        "ZAIN is being built as a local-first personal assistant " +
+                        "designed to understand you, remember useful information, " +
+                        "work offline, and become more capable over time.\n\n" +
+                        "Version 1.0"
+            )
+            .setPositiveButton("OK", null)
+            .show()
+    }
+
+    private fun confirmClearChat() {
+
+        AlertDialog.Builder(this)
+            .setTitle("Clear Chat?")
+            .setMessage(
+                "This will clear the messages in the current conversation.\n\n" +
+                        "Your saved memories will NOT be deleted."
+            )
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Clear") { _, _ ->
+                clearChat()
+            }
+            .show()
     }
 
     private fun loadConversation() {
@@ -80,6 +265,7 @@ class MainActivity : AppCompatActivity() {
                     )
 
                 withContext(Dispatchers.Main) {
+
                     addZainMessage(
                         "Hey, I'm ZAIN 👋\n\n" +
                                 "I'm your personal AI assistant.\n\n" +
