@@ -51,6 +51,8 @@ class MainActivity : AppCompatActivity() {
     ) {
 
         super.onCreate(savedInstanceState)
+ 
+        CrashReporter.install(this)
 
         setContentView(
             R.layout.activity_main
