@@ -1,5 +1,7 @@
 package com.dw.assisstant
 
+import com.dw.assisstant.util.CrashReporter
+
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
