@@ -1,14 +1,20 @@
 package com.dw.assisstant.brain
 
+import android.content.Context
 import com.dw.assisstant.data.ZainDatabase
 import com.dw.assisstant.data.entities.Memory
+import com.dw.assisstant.skills.SkillManager
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 class AssistantEngine(
+    private val context: Context,
     private val database: ZainDatabase
 ) {
+
+    private val skillManager =
+        SkillManager(context)
 
     suspend fun process(
         input: String,
@@ -16,208 +22,262 @@ class AssistantEngine(
     ): String {
 
         val text = input.trim()
-        val lower = text.lowercase(Locale.getDefault())
 
         if (text.isEmpty()) {
             return "I'm listening."
         }
 
-        // ---------------------------------------------------------
-        // MEMORY
-        // ---------------------------------------------------------
+        val intent =
+            skillManager.detectSkill(text)
 
-        val memoryToSave = extractMemory(text)
+        return when (intent) {
 
-        if (memoryToSave != null) {
+            AssistantIntent.Greeting ->
+                greeting()
 
-            database.memoryDao().insert(
-                Memory(
-                    content = memoryToSave,
-                    category = "user_memory"
-                )
+            AssistantIntent.Identity ->
+                identity()
+
+            AssistantIntent.Capabilities ->
+                capabilities()
+
+            AssistantIntent.Time ->
+                currentTime()
+
+            AssistantIntent.Date ->
+                currentDate()
+
+            AssistantIntent.OnlineStatus ->
+                onlineStatus()
+
+            AssistantIntent.Remember ->
+                remember(text)
+
+            AssistantIntent.RecallMemory ->
+                recallMemory()
+
+            AssistantIntent.SearchMemory ->
+                searchMemory(text)
+
+            AssistantIntent.Voice ->
+                "Voice interaction is ready to be connected."
+
+            AssistantIntent.Unknown ->
+                unknown(text)
+        }
+    }
+
+    private fun greeting(): String {
+
+        val hour =
+            java.util.Calendar
+                .getInstance()
+                .get(java.util.Calendar.HOUR_OF_DAY)
+
+        return when {
+
+            hour < 12 ->
+                "Good morning 👋 I'm ZAIN. I'm ready."
+
+            hour < 18 ->
+                "Good afternoon 👋 I'm ZAIN. I'm ready."
+
+            else ->
+                "Good evening 👋 I'm ZAIN. I'm ready."
+        }
+    }
+
+    private fun identity(): String {
+
+        return """
+            I'm ZAIN — your personal AI assistant.
+
+            I'm being built to understand you, remember useful information, work locally, use online intelligence when available, and grow through an expandable skills system.
+        """.trimIndent()
+    }
+
+    private fun capabilities(): String {
+
+        return """
+            My current foundation includes:
+
+            • Local conversations
+            • Local memory
+            • Memory retrieval
+            • Time and date
+            • Online/offline awareness
+            • Expandable skills
+            • Voice architecture
+            • Online AI architecture
+
+            More capabilities are being connected.
+        """.trimIndent()
+    }
+
+    private fun currentTime(): String {
+
+        val formatter =
+            SimpleDateFormat(
+                "h:mm a",
+                Locale.getDefault()
             )
 
-            return "Got it. I've saved that to my memory."
+        return "It's ${formatter.format(Date())}."
+    }
+
+    private fun currentDate(): String {
+
+        val formatter =
+            SimpleDateFormat(
+                "EEEE, d MMMM yyyy",
+                Locale.getDefault()
+            )
+
+        return "Today is ${formatter.format(Date())}."
+    }
+
+    private fun onlineStatus(): String {
+
+        val connectivity =
+            context
+                .getSystemService(
+                    Context.CONNECTIVITY_SERVICE
+                ) as android.net.ConnectivityManager
+
+        val network =
+            connectivity.activeNetwork
+
+        return if (network != null) {
+
+            "I'm online. Internet connectivity is available."
+
+        } else {
+
+            "I'm offline. My local brain is still available."
+        }
+    }
+
+    private suspend fun remember(
+        text: String
+    ): String {
+
+        val memory =
+            extractMemory(text)
+
+        if (memory.isNullOrBlank()) {
+            return "Tell me what you'd like me to remember."
         }
 
-        if (
-            lower.contains("what do you remember") ||
-            lower.contains("what do you know about me") ||
-            lower.contains("tell me what you remember")
-        ) {
+        database.memoryDao().insert(
+            Memory(
+                content = memory,
+                category = "user_memory"
+            )
+        )
 
-            val memories = database.memoryDao().getAll()
+        return "Got it. I've saved that to my memory."
+    }
 
-            if (memories.isEmpty()) {
-                return "I don't have any saved memories about you yet."
-            }
+    private suspend fun recallMemory(): String {
 
-            return buildString {
+        val memories =
+            database.memoryDao().getAll()
 
-                append("Here's what I remember:\n\n")
+        if (memories.isEmpty()) {
 
-                memories
-                    .take(15)
-                    .forEachIndexed { index, memory ->
-
-                        append("${index + 1}. ")
-                        append(memory.content)
-                        append("\n")
-                    }
-            }
+            return "I don't have any saved memories about you yet."
         }
 
-        if (
-            lower.contains("do you remember") ||
-            lower.contains("remember about") ||
-            lower.contains("know about")
-        ) {
+        return buildString {
 
-            val words = extractSearchWords(text)
+            append("Here's what I remember:\n\n")
 
-            if (words.isNotEmpty()) {
+            memories
+                .take(15)
+                .forEachIndexed { index, memory ->
 
-                val results = database.memoryDao().search(words)
-
-                if (results.isNotEmpty()) {
-
-                    return buildString {
-
-                        append("I found this in my memory:\n\n")
-
-                        results
-                            .take(5)
-                            .forEach {
-
-                                append("• ")
-                                append(it.content)
-                                append("\n")
-                            }
-                    }
+                    append("${index + 1}. ")
+                    append(memory.content)
+                    append("\n")
                 }
-            }
+        }
+    }
+
+    private suspend fun searchMemory(
+        text: String
+    ): String {
+
+        val query =
+            extractSearchWords(text)
+
+        if (query.isBlank()) {
+
+            return "Tell me what you want me to remember."
+        }
+
+        val individualWords =
+            query.split(Regex("\\s+"))
+
+        val results =
+            individualWords
+                .flatMap {
+                    database.memoryDao().search(it)
+                }
+                .distinctBy {
+                    it.id
+                }
+                .take(5)
+
+        if (results.isEmpty()) {
 
             return "I couldn't find anything about that in my memory."
         }
 
-        // ---------------------------------------------------------
-        // TIME / DATE
-        // ---------------------------------------------------------
+        return buildString {
 
-        if (
-            lower.contains("what time") ||
-            lower == "time" ||
-            lower.contains("current time")
-        ) {
+            append("I found this in my memory:\n\n")
 
-            val formatter =
-                SimpleDateFormat("h:mm a", Locale.getDefault())
+            results.forEach {
 
-            return "It's ${formatter.format(Date())}."
+                append("• ")
+                append(it.content)
+                append("\n")
+            }
         }
+    }
 
-        if (
-            lower.contains("what date") ||
-            lower.contains("today's date") ||
-            lower == "date"
-        ) {
-
-            val formatter =
-                SimpleDateFormat(
-                    "EEEE, d MMMM yyyy",
-                    Locale.getDefault()
-                )
-
-            return "Today is ${formatter.format(Date())}."
-        }
-
-        // ---------------------------------------------------------
-        // IDENTITY
-        // ---------------------------------------------------------
-
-        if (
-            lower == "hello" ||
-            lower == "hi" ||
-            lower == "hey" ||
-            lower.startsWith("hello ")
-        ) {
-
-            return "Hello 👋 I'm ZAIN. I'm ready."
-        }
-
-        if (lower.contains("who are you")) {
-
-            return """
-                I'm ZAIN — your personal AI assistant.
-
-                I'm being built to understand you, remember useful information, work locally, and grow into a much more capable assistant.
-            """.trimIndent()
-        }
-
-        if (
-            lower.contains("what can you do") ||
-            lower.contains("your capabilities")
-        ) {
-
-            return """
-                Right now I can:
-
-                • Chat with you
-                • Remember information
-                • Retrieve saved memories
-                • Store conversations locally
-                • Understand basic commands
-                • Work with time and date
-
-                More capabilities are being connected.
-            """.trimIndent()
-        }
-
-        // ---------------------------------------------------------
-        // ONLINE STATE
-        // ---------------------------------------------------------
-
-        if (
-            lower.contains("are you online") ||
-            lower.contains("are you connected")
-        ) {
-
-            return "My local brain is online. Internet intelligence and live services are being connected."
-        }
-
-        // ---------------------------------------------------------
-        // THANKS
-        // ---------------------------------------------------------
-
-        if (lower.contains("thank")) {
-            return "You're welcome."
-        }
-
-        // ---------------------------------------------------------
-        // DEFAULT
-        // ---------------------------------------------------------
+    private fun unknown(
+        text: String
+    ): String {
 
         return """
             I understand what you're saying.
 
-            My deeper intelligence layer is still being connected, but my local brain is active and your conversation is being stored locally.
+            My local brain is active, but I don't have an online intelligence provider connected yet.
+
+            I can still work with my local memories, conversations and built-in skills.
         """.trimIndent()
     }
 
-    private suspend fun extractMemory(
+    private fun extractMemory(
         text: String
     ): String? {
 
-        val lower = text.lowercase(Locale.getDefault())
+        val lower =
+            text.lowercase(Locale.getDefault())
 
         val prefixes = listOf(
-            "remember that ",
-            "remember ",
+
             "please remember that ",
             "please remember ",
+
+            "remember that ",
+            "remember ",
+
             "don't forget that ",
-            "dont forget that ",
             "don't forget ",
+
+            "dont forget that ",
             "dont forget "
         )
 
@@ -228,24 +288,24 @@ class AssistantEngine(
                 return text
                     .drop(prefix.length)
                     .trim()
-                    .takeIf { it.isNotEmpty() }
+                    .takeIf {
+                        it.isNotEmpty()
+                    }
             }
         }
 
-        // Natural statements such as:
-        //
-        // "My favorite color is red"
-        // "My favorite food is rice"
-        //
-        // are also useful memories.
+        /*
+         * Natural personal statements.
+         *
+         * Example:
+         * "My favorite color is red."
+         */
 
         if (
             lower.startsWith("my ") &&
             (
                 lower.contains(" is ") ||
-                lower.contains(" are ") ||
-                lower.contains("i am") ||
-                lower.contains("i'm")
+                lower.contains(" are ")
             )
         ) {
 
@@ -259,37 +319,61 @@ class AssistantEngine(
         text: String
     ): String {
 
-        val cleaned = text
-            .lowercase(Locale.getDefault())
-            .replace("what do you remember about", "")
-            .replace("what do you know about", "")
-            .replace("tell me what you remember about", "")
-            .replace("do you remember", "")
-            .replace("remember about", "")
-            .replace("know about", "")
-            .replace("?", "")
-            .trim()
+        val cleaned =
+            text
+                .lowercase(Locale.getDefault())
+                .replace(
+                    "what do you remember about",
+                    ""
+                )
+                .replace(
+                    "what do you know about",
+                    ""
+                )
+                .replace(
+                    "tell me what you remember about",
+                    ""
+                )
+                .replace(
+                    "do you remember",
+                    ""
+                )
+                .replace(
+                    "remember about",
+                    ""
+                )
+                .replace(
+                    "know about",
+                    ""
+                )
+                .replace(
+                    "?",
+                    ""
+                )
+                .trim()
 
-        val ignored = setOf(
-            "the",
-            "about",
-            "my",
-            "you",
-            "your",
-            "that",
-            "this",
-            "know",
-            "remember",
-            "please",
-            "tell",
-            "what",
-            "do"
-        )
+        val ignored =
+            setOf(
+                "the",
+                "about",
+                "my",
+                "you",
+                "your",
+                "that",
+                "this",
+                "know",
+                "remember",
+                "please",
+                "tell",
+                "what",
+                "do"
+            )
 
         return cleaned
             .split(Regex("\\s+"))
             .filter {
-                it.length > 2 && it !in ignored
+                it.length > 2 &&
+                    it !in ignored
             }
             .joinToString(" ")
     }
