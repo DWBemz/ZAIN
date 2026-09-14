@@ -16,4 +16,7 @@
     <color name="zain_surface">#111111</color>
     <color name="zain_surface_2">#171717</color>
 
+    <color name="zain_dark">#050505</color>
+    <color name="zain_dark_line">#292929</color>
+
 </resources>
