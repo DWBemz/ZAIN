@@ -1,7 +1,7 @@
 package com.dw.assisstant
 
-import android.content.Context
-import android.graphics.Color
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.view.Gravity
 import android.view.inputmethod.EditorInfo
@@ -32,7 +32,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var messageContainer: LinearLayout
     private lateinit var messageInput: EditText
-    private lateinit var scrollView: ScrollView
+    private lateinit var messageScroll: ScrollView
+
     private lateinit var sendButton: Button
     private lateinit var voiceButton: Button
 
@@ -41,74 +42,137 @@ class MainActivity : AppCompatActivity() {
     private lateinit var zainCore: TextView
     private lateinit var welcomeText: TextView
 
-    private var conversationId: Long = 0L
+    private var conversationId = 0L
 
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun onCreate(
+        savedInstanceState: Bundle?
+    ) {
+
         super.onCreate(savedInstanceState)
 
-        setContentView(R.layout.activity_main)
+        setContentView(
+            R.layout.activity_main
+        )
 
-        database = ZainDatabase.getInstance(this)
-        engine = AssistantEngine(database)
+        database =
+            ZainDatabase.getInstance(this)
 
-        messageContainer = findViewById(R.id.messageContainer)
-        messageInput = findViewById(R.id.messageInput)
-        scrollView = findViewById(R.id.messageScroll)
-        sendButton = findViewById(R.id.sendButton)
-        voiceButton = findViewById(R.id.voiceButton)
+        engine =
+            AssistantEngine(
+                this,
+                database
+            )
 
-        statusPill = findViewById(R.id.statusPill)
-        coreStatus = findViewById(R.id.coreStatus)
-        zainCore = findViewById(R.id.zainCore)
-        welcomeText = findViewById(R.id.welcomeText)
+        messageContainer =
+            findViewById(
+                R.id.messageContainer
+            )
 
-        val menuButton: Button = findViewById(R.id.menuButton)
+        messageInput =
+            findViewById(
+                R.id.messageInput
+            )
 
-        setupTimeBasedGreeting()
+        messageScroll =
+            findViewById(
+                R.id.messageScroll
+            )
+
+        sendButton =
+            findViewById(
+                R.id.sendButton
+            )
+
+        voiceButton =
+            findViewById(
+                R.id.voiceButton
+            )
+
+        statusPill =
+            findViewById(
+                R.id.statusPill
+            )
+
+        coreStatus =
+            findViewById(
+                R.id.coreStatus
+            )
+
+        zainCore =
+            findViewById(
+                R.id.zainCore
+            )
+
+        welcomeText =
+            findViewById(
+                R.id.welcomeText
+            )
+
+        val menuButton =
+            findViewById<Button>(
+                R.id.menuButton
+            )
+
+        updateGreeting()
+
+        updateConnectionState()
 
         sendButton.setOnClickListener {
             sendMessage()
         }
 
-        messageInput.setOnEditorActionListener { _, actionId, _ ->
+        messageInput.setOnEditorActionListener {
+                _, actionId, _ ->
 
-            if (actionId == EditorInfo.IME_ACTION_SEND) {
+            if (
+                actionId ==
+                EditorInfo.IME_ACTION_SEND
+            ) {
+
                 sendMessage()
+
                 true
+
             } else {
+
                 false
             }
         }
 
         voiceButton.setOnClickListener {
 
+            setAssistantState(
+                "VOICE READY"
+            )
+
             Toast.makeText(
                 this,
                 "Voice interface is being connected.",
                 Toast.LENGTH_SHORT
             ).show()
-
-            setAssistantState("VOICE READY")
         }
 
         menuButton.setOnClickListener {
-            showMainMenu(menuButton)
+
+            showMainMenu(
+                menuButton
+            )
         }
 
-        updateOnlineAppearance()
+        startCoreAnimation()
 
         loadConversation()
     }
 
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
     // GREETING
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
 
-    private fun setupTimeBasedGreeting() {
+    private fun updateGreeting() {
 
-        val hour = Calendar
-            .getInstance()
-            .get(Calendar.HOUR_OF_DAY)
+        val hour =
+            Calendar.getInstance()
+                .get(Calendar.HOUR_OF_DAY)
 
         welcomeText.text = when {
 
@@ -123,37 +187,86 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // -------------------------------------------------------------
-    // ONLINE APPEARANCE
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
+    // CONNECTION
+    // ---------------------------------------------------------
 
-    private fun updateOnlineAppearance() {
+    private fun isOnline(): Boolean {
 
-        statusPill.text = "● ONLINE"
-        coreStatus.text = "LOCAL BRAIN READY"
+        val manager =
+            getSystemService(
+                CONNECTIVITY_SERVICE
+            ) as ConnectivityManager
+
+        val network =
+            manager.activeNetwork
+                ?: return false
+
+        val capabilities =
+            manager.getNetworkCapabilities(
+                network
+            ) ?: return false
+
+        return capabilities.hasCapability(
+            NetworkCapabilities.NET_CAPABILITY_INTERNET
+        )
+    }
+
+    private fun updateConnectionState() {
+
+        if (isOnline()) {
+
+            statusPill.text =
+                "● ONLINE"
+
+            coreStatus.text =
+                "ONLINE • LOCAL CORE READY"
+
+        } else {
+
+            statusPill.text =
+                "● OFFLINE"
+
+            coreStatus.text =
+                "OFFLINE • LOCAL CORE READY"
+        }
+    }
+
+    // ---------------------------------------------------------
+    // CORE
+    // ---------------------------------------------------------
+
+    private fun startCoreAnimation() {
 
         zainCore.animate()
             .scaleX(1.04f)
             .scaleY(1.04f)
-            .setDuration(1000)
+            .setDuration(1200)
             .withEndAction {
 
                 zainCore.animate()
                     .scaleX(1f)
                     .scaleY(1f)
-                    .setDuration(1000)
+                    .setDuration(1200)
+                    .withEndAction {
+
+                        startCoreAnimation()
+                    }
                     .start()
             }
             .start()
     }
 
-    private fun setAssistantState(state: String) {
+    private fun setAssistantState(
+        state: String
+    ) {
 
-        coreStatus.text = state.uppercase()
+        coreStatus.text =
+            state.uppercase()
 
         zainCore.animate()
-            .scaleX(1.08f)
-            .scaleY(1.08f)
+            .scaleX(1.09f)
+            .scaleY(1.09f)
             .setDuration(180)
             .withEndAction {
 
@@ -166,47 +279,66 @@ class MainActivity : AppCompatActivity() {
             .start()
     }
 
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
     // CONVERSATION
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
 
     private fun loadConversation() {
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
 
             val conversations =
-                database.conversationDao().getAll()
+                database
+                    .conversationDao()
+                    .getAll()
 
-            if (conversations.isEmpty()) {
+            if (
+                conversations.isEmpty()
+            ) {
 
                 conversationId =
-                    database.conversationDao().insert(
-                        Conversation(
-                            title = "ZAIN Conversation"
+                    database
+                        .conversationDao()
+                        .insert(
+                            Conversation(
+                                title =
+                                    "ZAIN Conversation"
+                            )
                         )
-                    )
 
-                withContext(Dispatchers.Main) {
+                withContext(
+                    Dispatchers.Main
+                ) {
 
                     addZainMessage(
-                        "Hello. I'm ZAIN.\n\n" +
-                            "Your local assistant brain is ready."
+                        "Welcome back.\n\n" +
+                            "What are we working on?"
                     )
                 }
 
             } else {
 
-                val latest = conversations.first()
-
-                conversationId = latest.id
+                conversationId =
+                    conversations
+                        .first()
+                        .id
 
                 val messages =
-                    database.messageDao()
-                        .getForConversation(conversationId)
+                    database
+                        .messageDao()
+                        .getForConversation(
+                            conversationId
+                        )
 
-                withContext(Dispatchers.Main) {
+                withContext(
+                    Dispatchers.Main
+                ) {
 
-                    if (messages.isEmpty()) {
+                    if (
+                        messages.isEmpty()
+                    ) {
 
                         addZainMessage(
                             "Welcome back.\n\n" +
@@ -215,15 +347,22 @@ class MainActivity : AppCompatActivity() {
 
                     } else {
 
-                        messages.forEach { message ->
+                        messages.forEach {
 
-                            if (message.role == "user") {
+                            if (
+                                it.role ==
+                                "user"
+                            ) {
 
-                                addUserMessage(message.content)
+                                addUserMessage(
+                                    it.content
+                                )
 
                             } else {
 
-                                addZainMessage(message.content)
+                                addZainMessage(
+                                    it.content
+                                )
                             }
                         }
                     }
@@ -232,39 +371,55 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // -------------------------------------------------------------
-    // SEND
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
+    // MESSAGE
+    // ---------------------------------------------------------
 
     private fun sendMessage() {
 
         val text =
-            messageInput.text
+            messageInput
+                .text
                 .toString()
                 .trim()
 
-        if (text.isEmpty()) return
+        if (
+            text.isEmpty()
+        ) {
+            return
+        }
 
         messageInput.text.clear()
 
         addUserMessage(text)
 
-        sendButton.isEnabled = false
-        voiceButton.isEnabled = false
+        sendButton.isEnabled =
+            false
 
-        setAssistantState("THINKING")
+        voiceButton.isEnabled =
+            false
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        setAssistantState(
+            "THINKING"
+        )
 
-            database.messageDao().insert(
-                Message(
-                    conversationId = conversationId,
-                    role = "user",
-                    content = text
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
+
+            database
+                .messageDao()
+                .insert(
+                    Message(
+                        conversationId =
+                            conversationId,
+                        role = "user",
+                        content = text
+                    )
                 )
-            )
 
-            database.conversationDao()
+            database
+                .conversationDao()
                 .updateTimestamp(
                     conversationId,
                     System.currentTimeMillis()
@@ -276,92 +431,128 @@ class MainActivity : AppCompatActivity() {
                     conversationId
                 )
 
-            database.messageDao().insert(
-                Message(
-                    conversationId = conversationId,
-                    role = "assistant",
-                    content = response
+            database
+                .messageDao()
+                .insert(
+                    Message(
+                        conversationId =
+                            conversationId,
+                        role =
+                            "assistant",
+                        content =
+                            response
+                    )
                 )
-            )
 
-            database.conversationDao()
+            database
+                .conversationDao()
                 .updateTimestamp(
                     conversationId,
                     System.currentTimeMillis()
                 )
 
-            withContext(Dispatchers.Main) {
+            withContext(
+                Dispatchers.Main
+            ) {
 
-                addZainMessage(response)
+                addZainMessage(
+                    response
+                )
 
-                sendButton.isEnabled = true
-                voiceButton.isEnabled = true
+                sendButton.isEnabled =
+                    true
 
-                setAssistantState("SYSTEM READY")
+                voiceButton.isEnabled =
+                    true
+
+                updateConnectionState()
 
                 messageInput.requestFocus()
             }
         }
     }
 
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
     // MENU
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
 
-    private fun showMainMenu(anchor: Button) {
+    private fun showMainMenu(
+        anchor: Button
+    ) {
 
-        val popup = PopupMenu(this, anchor)
+        val popup =
+            PopupMenu(
+                this,
+                anchor
+            )
 
         popup.menuInflater.inflate(
             R.menu.main_menu,
             popup.menu
         )
 
-        popup.setOnMenuItemClickListener { item ->
+        popup.setOnMenuItemClickListener {
 
-            when (item.itemId) {
+            when (it.itemId) {
 
                 R.id.menu_memory -> {
+
                     showMemory()
+
                     true
                 }
 
                 R.id.menu_conversations -> {
+
                     showConversations()
+
                     true
                 }
 
                 R.id.menu_voice -> {
-                    showComingSoon(
+
+                    showInfo(
                         "Voice",
-                        "Voice interaction is being connected to ZAIN."
+                        "Voice interaction is being connected."
                     )
+
                     true
                 }
 
                 R.id.menu_skills -> {
-                    showComingSoon(
-                        "Skills & Capabilities",
-                        "ZAIN's expandable skills system is being built."
+
+                    showInfo(
+                        "Skills",
+                        "ZAIN's expandable skill system is active and will continue growing."
                     )
+
                     true
                 }
 
                 R.id.menu_settings -> {
-                    showComingSoon(
+
+                    showInfo(
                         "Settings",
-                        "ZAIN settings will appear here."
+                        "The full ZAIN settings system is coming next."
                     )
+
                     true
                 }
 
                 R.id.menu_about -> {
-                    showAbout()
+
+                    showInfo(
+                        "About ZAIN",
+                        "ZAIN is a personal AI assistant designed around local memory, expandable skills, online intelligence and future multi-device synchronization."
+                    )
+
                     true
                 }
 
                 R.id.menu_clear_chat -> {
+
                     confirmClearChat()
+
                     true
                 }
 
@@ -372,117 +563,135 @@ class MainActivity : AppCompatActivity() {
         popup.show()
     }
 
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
     // MEMORY
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
 
     private fun showMemory() {
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
 
             val memories =
-                database.memoryDao().getAll()
+                database
+                    .memoryDao()
+                    .getAll()
 
-            withContext(Dispatchers.Main) {
+            withContext(
+                Dispatchers.Main
+            ) {
 
-                if (memories.isEmpty()) {
+                if (
+                    memories.isEmpty()
+                ) {
 
-                    showComingSoon(
-                        "Memory",
-                        "ZAIN doesn't have any saved memories yet."
+                    showInfo(
+                        "ZAIN Memory",
+                        "I don't have any saved memories yet."
                     )
 
                     return@withContext
                 }
 
-                val text = buildString {
+                val text =
+                    buildString {
 
-                    memories
-                        .take(20)
-                        .forEachIndexed { index, memory ->
+                        memories
+                            .take(20)
+                            .forEachIndexed {
+                                    index,
+                                    memory ->
 
-                            append("${index + 1}. ")
-                            append(memory.content)
-                            append("\n\n")
-                        }
-                }
+                                append(
+                                    "${index + 1}. "
+                                )
 
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("🧠 ZAIN Memory")
-                    .setMessage(text)
-                    .setPositiveButton("Close", null)
-                    .show()
+                                append(
+                                    memory.content
+                                )
+
+                                append(
+                                    "\n\n"
+                                )
+                            }
+                    }
+
+                showInfo(
+                    "🧠 ZAIN Memory",
+                    text
+                )
             }
         }
     }
 
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
     // CONVERSATIONS
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
 
     private fun showConversations() {
 
-        lifecycleScope.launch(Dispatchers.IO) {
+        lifecycleScope.launch(
+            Dispatchers.IO
+        ) {
 
             val conversations =
-                database.conversationDao().getAll()
+                database
+                    .conversationDao()
+                    .getAll()
 
-            withContext(Dispatchers.Main) {
+            withContext(
+                Dispatchers.Main
+            ) {
 
-                if (conversations.isEmpty()) {
+                if (
+                    conversations.isEmpty()
+                ) {
 
-                    showComingSoon(
+                    showInfo(
                         "Conversations",
-                        "No conversations have been created yet."
+                        "No conversations yet."
                     )
 
                     return@withContext
                 }
 
-                val text = buildString {
+                val text =
+                    buildString {
 
-                    conversations
-                        .take(20)
-                        .forEachIndexed { index, conversation ->
+                        conversations
+                            .take(20)
+                            .forEachIndexed {
+                                    index,
+                                    conversation ->
 
-                            append("${index + 1}. ")
-                            append(conversation.title)
-                            append("\n\n")
-                        }
-                }
+                                append(
+                                    "${index + 1}. "
+                                )
 
-                AlertDialog.Builder(this@MainActivity)
-                    .setTitle("💬 Conversations")
-                    .setMessage(text)
-                    .setPositiveButton("Close", null)
-                    .show()
+                                append(
+                                    conversation.title
+                                )
+
+                                append(
+                                    "\n\n"
+                                )
+                            }
+                    }
+
+                showInfo(
+                    "💬 Conversations",
+                    text
+                )
             }
         }
     }
 
-    // -------------------------------------------------------------
-    // ABOUT
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
+    // INFO
+    // ---------------------------------------------------------
 
-    private fun showAbout() {
-
-        AlertDialog.Builder(this)
-            .setTitle("ZAIN")
-            .setMessage(
-                "Personal AI Assistant\n\n" +
-                    "ZAIN is being built as a local-first personal assistant " +
-                    "with memory, conversations, voice, live information, " +
-                    "skills and multi-device capabilities."
-            )
-            .setPositiveButton("Close", null)
-            .show()
-    }
-
-    // -------------------------------------------------------------
-    // COMING SOON
-    // -------------------------------------------------------------
-
-    private fun showComingSoon(
+    private fun showInfo(
         title: String,
         message: String
     ) {
@@ -490,65 +699,82 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle(title)
             .setMessage(message)
-            .setPositiveButton("Close", null)
+            .setPositiveButton(
+                "Close",
+                null
+            )
             .show()
     }
 
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
     // CLEAR CHAT
-    // -------------------------------------------------------------
+    // ---------------------------------------------------------
 
     private fun confirmClearChat() {
 
         AlertDialog.Builder(this)
-            .setTitle("Clear current chat?")
-            .setMessage(
-                "This will delete the messages in this conversation. " +
-                    "Saved memories will remain safe."
+            .setTitle(
+                "Clear current chat?"
             )
-            .setNegativeButton("Cancel", null)
-            .setPositiveButton("Clear") { _, _ ->
-                clearChat()
+            .setMessage(
+                "Messages in this conversation will be deleted. Saved memories will remain."
+            )
+            .setNegativeButton(
+                "Cancel",
+                null
+            )
+            .setPositiveButton(
+                "Clear"
+            ) { _, _ ->
+
+                lifecycleScope.launch(
+                    Dispatchers.IO
+                ) {
+
+                    database
+                        .messageDao()
+                        .deleteForConversation(
+                            conversationId
+                        )
+
+                    withContext(
+                        Dispatchers.Main
+                    ) {
+
+                        messageContainer
+                            .removeAllViews()
+
+                        addZainMessage(
+                            "Chat cleared.\n\n" +
+                                "My saved memories are still safe."
+                        )
+                    }
+                }
             }
             .show()
     }
 
-    private fun clearChat() {
+    // ---------------------------------------------------------
+    // MESSAGE BUBBLES
+    // ---------------------------------------------------------
 
-        lifecycleScope.launch(Dispatchers.IO) {
-
-            database.messageDao()
-                .deleteForConversation(conversationId)
-
-            withContext(Dispatchers.Main) {
-
-                messageContainer.removeAllViews()
-
-                addZainMessage(
-                    "Chat cleared.\n\n" +
-                        "My saved memories are still safe."
-                )
-            }
-        }
-    }
-
-    // -------------------------------------------------------------
-    // MESSAGE UI
-    // -------------------------------------------------------------
-
-    private fun addUserMessage(text: String) {
+    private fun addUserMessage(
+        text: String
+    ) {
 
         addMessageBubble(
-            text = text,
-            isUser = true
+            text,
+            true
         )
     }
 
-    private fun addZainMessage(text: String) {
+    private fun addZainMessage(
+        text: String
+    ) {
 
         addMessageBubble(
-            text = text,
-            isUser = false
+            text,
+            false
         )
     }
 
@@ -557,10 +783,15 @@ class MainActivity : AppCompatActivity() {
         isUser: Boolean
     ) {
 
-        val bubble = TextView(this)
+        val bubble =
+            TextView(this)
 
-        bubble.text = text
-        bubble.textSize = 15f
+        bubble.text =
+            text
+
+        bubble.textSize =
+            15f
+
         bubble.setTextColor(
             ContextCompat.getColor(
                 this,
@@ -601,12 +832,16 @@ class MainActivity : AppCompatActivity() {
             else
                 Gravity.START
 
-        bubble.layoutParams = params
+        bubble.layoutParams =
+            params
 
-        messageContainer.addView(bubble)
+        messageContainer.addView(
+            bubble
+        )
 
-        scrollView.post {
-            scrollView.fullScroll(
+        messageScroll.post {
+
+            messageScroll.fullScroll(
                 ScrollView.FOCUS_DOWN
             )
         }
