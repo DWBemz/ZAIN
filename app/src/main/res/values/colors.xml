@@ -5,6 +5,9 @@
     <color name="zain_black">#050505</color>
     <color name="zain_black_soft">#0A0A0A</color>
 
+    <color name="zain_dark">#111111</color>
+    <color name="zain_dark_line">#292929</color>
+
     <color name="zain_red">#FF1744</color>
     <color name="zain_red_dark">#B00020</color>
     <color name="zain_red_soft">#401018</color>
@@ -15,8 +18,5 @@
 
     <color name="zain_surface">#111111</color>
     <color name="zain_surface_2">#171717</color>
-
-    <color name="zain_dark">#050505</color>
-    <color name="zain_dark_line">#292929</color>
 
 </resources>
