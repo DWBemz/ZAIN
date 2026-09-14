@@ -3,6 +3,8 @@ package com.dw.assisstant.util
 import android.content.Context
 import android.os.Build
 import java.io.File
+import java.io.PrintWriter
+import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -13,8 +15,7 @@ object CrashReporter {
 
     fun install(context: Context) {
 
-        val applicationContext =
-            context.applicationContext
+        val applicationContext = context.applicationContext
 
         val defaultHandler =
             Thread.getDefaultUncaughtExceptionHandler()
@@ -22,16 +23,13 @@ object CrashReporter {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
 
             try {
-
                 saveCrash(
                     applicationContext,
                     thread,
                     throwable
                 )
-
             } catch (_: Exception) {
-                // Never allow the crash reporter itself
-                // to cause another crash.
+                // Never let the crash reporter cause another crash.
             }
 
             defaultHandler?.uncaughtException(
@@ -47,91 +45,107 @@ object CrashReporter {
         throwable: Throwable
     ) {
 
-        val formatter =
-            SimpleDateFormat(
-                "yyyy-MM-dd HH:mm:ss",
-                Locale.US
+        val formatter = SimpleDateFormat(
+            "yyyy-MM-dd HH:mm:ss",
+            Locale.US
+        )
+
+        val stackWriter = StringWriter()
+
+        throwable.printStackTrace(
+            PrintWriter(stackWriter)
+        )
+
+        val report = buildString {
+
+            appendLine("================================")
+            appendLine("ZAIN CRASH REPORT")
+            appendLine("================================")
+            appendLine()
+
+            appendLine(
+                "Time: ${formatter.format(Date())}"
             )
 
-        val report =
-            buildString {
+            appendLine(
+                "Device: ${Build.MANUFACTURER} ${Build.MODEL}"
+            )
 
-                appendLine("================================")
-                appendLine("ZAIN CRASH REPORT")
-                appendLine("================================")
-                appendLine()
+            appendLine(
+                "Android: ${Build.VERSION.RELEASE}"
+            )
 
-                appendLine(
-                    "Time: ${formatter.format(Date())}"
-                )
+            appendLine(
+                "SDK: ${Build.VERSION.SDK_INT}"
+            )
 
-                appendLine(
-                    "Device: ${Build.MANUFACTURER} ${Build.MODEL}"
-                )
+            appendLine(
+                "Package: ${context.packageName}"
+            )
 
-                appendLine(
-                    "Android: ${Build.VERSION.RELEASE}"
-                )
+            appendLine(
+                "Thread: ${thread.name}"
+            )
 
-                appendLine(
-                    "SDK: ${Build.VERSION.SDK_INT}"
-                )
+            appendLine()
 
-                appendLine(
-                    "Thread: ${thread.name}"
-                )
+            appendLine("EXCEPTION")
+            appendLine("--------------------------------")
+            appendLine(throwable.toString())
 
-                appendLine()
+            appendLine()
 
-                appendLine("EXCEPTION")
-                appendLine("--------------------------------")
-                appendLine(
-                    throwable.toString()
-                )
+            appendLine("STACK TRACE")
+            appendLine("--------------------------------")
+            appendLine(stackWriter.toString())
 
-                appendLine()
-                appendLine("STACK TRACE")
-                appendLine("--------------------------------")
+            appendLine()
+            appendLine("================================")
+        }
 
-                throwable.printStackTrace(
-                    java.io.PrintWriter(
-                        java.io.StringWriter()
-                    )
-                )
-
-                val writer =
-                    java.io.StringWriter()
-
-                throwable.printStackTrace(
-                    java.io.PrintWriter(writer)
-                )
-
-                appendLine(
-                    writer.toString()
-                )
-
-                appendLine()
-                appendLine("================================")
-            }
-
+        // Private internal copy
         File(
             context.filesDir,
             FILE_NAME
         ).writeText(report)
+
+        // Accessible external app-specific copy
+        val externalDirectory =
+            context.getExternalFilesDir(null)
+
+        if (externalDirectory != null) {
+
+            File(
+                externalDirectory,
+                FILE_NAME
+            ).writeText(report)
+        }
     }
 
     fun getLatestReport(
         context: Context
     ): String? {
 
-        val file =
+        val externalDirectory =
+            context.getExternalFilesDir(null)
+
+        val externalFile =
+            externalDirectory?.let {
+                File(it, FILE_NAME)
+            }
+
+        if (externalFile?.exists() == true) {
+            return externalFile.readText()
+        }
+
+        val internalFile =
             File(
                 context.filesDir,
                 FILE_NAME
             )
 
-        return if (file.exists()) {
-            file.readText()
+        return if (internalFile.exists()) {
+            internalFile.readText()
         } else {
             null
         }
@@ -140,6 +154,18 @@ object CrashReporter {
     fun hasReport(
         context: Context
     ): Boolean {
+
+        val externalDirectory =
+            context.getExternalFilesDir(null)
+
+        val externalFile =
+            externalDirectory?.let {
+                File(it, FILE_NAME)
+            }
+
+        if (externalFile?.exists() == true) {
+            return true
+        }
 
         return File(
             context.filesDir,
@@ -155,5 +181,12 @@ object CrashReporter {
             context.filesDir,
             FILE_NAME
         ).delete()
+
+        context.getExternalFilesDir(null)?.let {
+            File(
+                it,
+                FILE_NAME
+            ).delete()
+        }
     }
 }
