@@ -177,7 +177,7 @@
             android:layout_weight="1"
             android:background="@drawable/bg_assistant_input"
             android:hint="Ask ZAIN anything..."
-            android:hintTextColor="@color/zain_muted"
+            android:textColorHint="@color/zain_muted"
             android:textColor="@color/zain_white"
             android:textColorHighlight="@color/zain_red"
             android:textSize="15sp"
