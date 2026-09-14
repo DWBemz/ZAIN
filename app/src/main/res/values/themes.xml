@@ -11,13 +11,18 @@
         <item name="android:windowLightStatusBar">false</item>
 
         <item name="android:statusBarColor">@color/zain_black</item>
-        <item name="android:navigationBarColor">@color/zain_black</item>
 
-        <item name="android:windowBackground">@color/zain_black</item>
+        <item name="android:navigationBarColor">
+            @color/zain_black
+        </item>
 
-        <item name="android:colorAccent">@color/zain_red</item>
+        <item name="android:windowBackground">
+            @color/zain_black
+        </item>
 
-        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:colorAccent">
+            @color/zain_red
+        </item>
 
     </style>
 
